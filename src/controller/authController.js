@@ -1,68 +1,47 @@
 
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { randomBytes, createHash } from 'node:crypto';
-import RefreshToken from '../model/refreshToken.js';
-import User from '../model/user.js';
+import { registerUser,loginUser,profileUser,logoutUser,refreshSession } from '../service/authService.js'
 
-const createAccessToken = (user) => {
-    return jwt.sign(
-        { 
-            id: user.id,
-            email: user.email, 
-            role: user.role 
-        },
-            process.env.ACCESS_TOKEN_SECRET,
-        { 
-            expiresIn: '15m' 
-        }
-    )
+// Register Controller
+export const Register = async (req, res) => {
+    try {
+        const user = await registerUser(req.body)
+
+        return res.status(201).json({
+            message: 'User registered successfully',
+            user: {
+                id: user.id,
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone,
+                role: user.role
+            }
+        })
+    } catch (error) {
+        console.error('Register error:', error.message)
+
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
+        })
+    }
 }
 
-const setRefreshCookie = (res, token) => {
-    res.cookie('refreshToken', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/api/auth',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-    })
-}
-
-// Login
+// Login Controller
 export const Login = async (req, res) => {
     try {
         const { email, password } = req.body
 
-        if (!email || !password) {
-            return res.status(400).json({ 
-                message: 'Email and password are required' 
-            })
-        }
+        const { user, accessToken, refreshToken } = await loginUser(email, password)
 
-        const user = await User.findOne({
-            where: { 
-                email: email.trim().toLowerCase() 
-            }
+        // Set Refresh Token Cookie
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/api/auth',
+            maxAge: 7 * 24 * 60 * 60 * 1000
         })
-
-        if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ 
-                message: 'Email or password is invalid' 
-            })
-        }
-
-        const accessToken = createAccessToken(user)
-        const refreshToken = randomBytes(64).toString('hex')
-        const tokenHash = createHash('sha256').update(refreshToken).digest('hex')
-
-        await RefreshToken.create({
-            userId: user.id,
-            tokenHash,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        })
-
-        setRefreshCookie(res, refreshToken)
 
         return res.status(200).json({
             message: 'Login successful',
@@ -79,53 +58,78 @@ export const Login = async (req, res) => {
         })
     } catch (error) {
         console.error('Login error:', error.message)
-        return res.status(500).json({ 
-            message: 'Internal server error' 
+
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
         })
     }
 }
-export const Register = async (req, res) => {
+
+
+// get profile 
+export const GetProfile = async (req,res)=>{
+    try{
+        const user = await profileUser(req.user.id)
+        return res.status(200).json({
+            message: "Profile is retrive succes fully",
+            user
+        })
+
+    }catch(error){
+        return res.status(500).json({
+            message: "intenal server errro"
+        })
+        console.log(error)
+    }
+}
+// refreh token 
+export const RefreshToken = async(req,res)=>{
     try {
-        const { username, firstName, lastName, email, phone, password } = req.body
+        const oldRefreshToken = req.cookies.refreshToken
+        const token = await refreshSession(oldRefreshToken)
 
-        if (!username || !firstName || !lastName || !email || !phone || !password) {
-            return res.status(400).json({
-                message: 'Username, first name, last name, email, phone, and password are required'
-            })
-        }
-        const existingUser = await User.findOne({ where: { email } })
-        if (existingUser) {
-            return res.status(409).json({ 
-                message: 'Email already exists' 
-            })
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 12)
-
-        const user = await User.create({
-            username,
-            firstName,
-            lastName,
-            email,
-            phone,
-            password: hashedPassword,
-            role: 'student'
+        res.cookie("refreshToken", token.refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: "/api/auth",
+            maxAge: 7 * 24 * 60 * 60 * 1000
         })
-
-        return res.status(201).json({
-            message: 'User registered successfully',
-            user: {
-                id: user.id,
-                username: user.username,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phone: user.phone,
-                role: user.role
-            }
+        return res.status(200).json({
+            message: "TOken refresh successfully",
+            accessToken: token.accessToken
         })
+        
     } catch (error) {
-        console.error('Register error:', error)
-        return res.status(500).json({ message: 'Internal server error' })
+        res.status(500).json({
+            message: "Internal server Error"
+        })
+        console.log(error)
+    }
+}
+
+
+// logout 
+export const Logout = async(req,res)=>{
+    try{
+        const refreshToken = req.cookies.refreshToken 
+        await logoutUser(refreshToken)
+
+        // clear cookie
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: "/api/auth"
+        })
+
+        return res.status(200).json({
+            message: "logout successs><"
+        })
+    } catch (error){
+        return res.status(500).json({
+            message: "Internal server Error"
+        })
+        console.log(error)
     }
 }
