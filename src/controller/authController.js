@@ -1,5 +1,4 @@
-
-import { registerUser,loginUser,profileUser,logoutUser,refreshSession,forgotPassword,resetPassword } from '../service/authService.js'
+import { registerUser, loginUser, profileUser, logoutUser, refreshSession, forgotPassword, resetPassword, changePassword } from '../service/authService.js'
 
 // Register Controller
 export const Register = async (req, res) => {
@@ -8,15 +7,7 @@ export const Register = async (req, res) => {
 
         return res.status(201).json({
             message: 'User registered successfully',
-            user: {
-                id: user.id,
-                username: user.username,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phone: user.phone,
-                role: user.role
-            }
+            user
         })
     } catch (error) {
         console.error('Register error:', error.message)
@@ -46,15 +37,7 @@ export const Login = async (req, res) => {
         return res.status(200).json({
             message: 'Login successful',
             accessToken,
-            user: {
-                id: user.id,
-                username: user.username,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phone: user.phone,
-                role: user.role
-            }
+            user
         })
     } catch (error) {
         console.error('Login error:', error.message)
@@ -65,140 +48,165 @@ export const Login = async (req, res) => {
     }
 }
 
-
-// get profile 
-export const GetProfile = async (req,res)=>{
-    try{
+// Get Profile
+export const GetProfile = async (req, res) => {
+    try {
         const user = await profileUser(req.user.id)
         return res.status(200).json({
-            message: "Profile is retrive succes fully",
+            message: 'Profile retrieved successfully',
             user
         })
-
-    }catch(error){
-        return res.status(500).json({
-            message: "intenal server errro"
+    } catch (error) {
+        console.error('Get Profile error:', error.message)
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
         })
-        console.log(error)
     }
 }
-// refreh token 
-export const RefreshToken = async(req,res)=>{
+
+// Refresh Token
+export const RefreshToken = async (req, res) => {
     try {
         const oldRefreshToken = req.cookies.refreshToken
         const token = await refreshSession(oldRefreshToken)
 
-        res.cookie("refreshToken", token.refreshToken, {
+        res.cookie('refreshToken', token.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            path: "/api/auth",
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/api/auth',
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
         return res.status(200).json({
-            message: "TOken refresh successfully",
+            message: 'Token refreshed successfully',
             accessToken: token.accessToken
         })
-        
     } catch (error) {
-        res.status(500).json({
-            message: "Internal server Error"
+        console.error('Refresh Token error:', error.message)
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
         })
-        console.log(error)
     }
 }
 
-
-// logout 
-export const Logout = async(req,res)=>{
-    try{
-        const refreshToken = req.cookies.refreshToken 
+// Logout
+export const Logout = async (req, res) => {
+    try {
+        const refreshToken = req.cookies.refreshToken
         await logoutUser(refreshToken)
 
-        // clear cookie
-        res.clearCookie("refreshToken", {
+        // Clear cookie
+        res.clearCookie('refreshToken', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            path: "/api/auth"
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/api/auth'
         })
 
         return res.status(200).json({
-            message: "logout successs><"
+            message: 'Logout successfully'
         })
-    } catch (error){
+    } catch (error) {
+        console.error('Logout error:', error.message)
         return res.status(500).json({
-            message: "Internal server Error"
+            message: 'Internal server error'
         })
-        console.log(error)
     }
 }
 
-// forgot password 
-
-export const ForgotPassword = async (req,res) => {
+// Forgot Password
+export const ForgotPassword = async (req, res) => {
     try {
-        const {email} = req.body
+        const { email } = req.body
         const result = await forgotPassword(email)
 
         return res.status(200).json({
             message: result.message
-
         })
-    }catch (error) {
-        console.log("Forgot Password Error:", error);
-        return res.status(500).json({
-        message: "Internal server error",
-    });
+    } catch (error) {
+        console.error('Forgot Password error:', error.message)
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
+        })
     }
-} 
+}
 
-// reset password
-
+// Reset Password
 export const ResetPassword = async (req, res) => {
-  try {
-    const { token, newPassword, confirmPassword } = req.body;
+    try {
+        const { token, newPassword, confirmPassword } = req.body
 
-    // Validate required fields
-    if (!token || !newPassword || !confirmPassword) {
-      return res.status(400).json({
-        message: "All fields are required",
-      });
+        if (!token || !newPassword || !confirmPassword) {
+            return res.status(400).json({
+                message: 'All fields are required'
+            })
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                message: 'Passwords do not match'
+            })
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                message: 'Password must be at least 8 characters'
+            })
+        }
+
+        const result = await resetPassword(token, newPassword)
+
+        return res.status(200).json({
+            message: result.message
+        })
+    } catch (error) {
+        console.error('Reset Password error:', error.message)
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
+        })
     }
+}
 
-    // Check password confirmation
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({
-        message: "Passwords do not match",
-      });
+// Change Password
+export const ChangePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword, confirmPassword } = req.body
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                message: 'Current password and new password are required'
+            })
+        }
+
+        if (confirmPassword && newPassword !== confirmPassword) {
+            return res.status(400).json({
+                message: 'Passwords do not match'
+            })
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                message: 'New password must be at least 8 characters'
+            })
+        }
+
+        const result = await changePassword(req.user.id, currentPassword, newPassword)
+
+        // Clear refresh token cookie since tokens are revoked
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/api/auth'
+        })
+
+        return res.status(200).json({
+            message: result.message
+        })
+    } catch (error) {
+        console.error('Change Password error:', error.message)
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
+        })
     }
-
-    // Validate password length
-    if (newPassword.length < 8) {
-      return res.status(400).json({
-        message: "Password must be at least 8 characters",
-      });
-    }
-
-    const result = await resetPassword(token, newPassword);
-
-    return res.status(200).json({
-      message: result.message,
-    });
-  } catch (error) {
-    console.log("Reset Password Error:", error);
-
-    if (
-      error.message === "Invalid or expired reset token" ||
-      error.message === "Reset token has expired"
-    ) {
-      return res.status(400).json({
-        message: error.message,
-      });
-    }
-
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  }
-};
+}

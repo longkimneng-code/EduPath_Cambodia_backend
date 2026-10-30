@@ -1,7 +1,7 @@
-
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { randomBytes, createHash } from 'node:crypto'
+import { Op } from 'sequelize'
 import RefreshToken from '../model/refreshToken.js'
 import User from '../model/user.js'
 import PasswordResetToken from '../model/passwordResetToken.js'
@@ -31,12 +31,13 @@ const createRefreshToken = () => {
 const hashRefreshToken = (token) => {
     return createHash('sha256').update(token).digest('hex')
 }
+
 // Hash Password Reset Token
 const hashResetToken = (token) => {
-    return createHash('sha256').update(token).digest('hex');
-};
+    return createHash('sha256').update(token).digest('hex')
+}
 
-// save refresh token to db
+// Save refresh token to db
 const saveRefreshToken = async (userId, refreshToken, transaction = null) => {
     const tokenHash = hashRefreshToken(refreshToken)
 
@@ -51,10 +52,10 @@ const saveRefreshToken = async (userId, refreshToken, transaction = null) => {
 
 // Register Service
 export const registerUser = async (data) => {
-    const { username, firstName, lastName, email, phone, password } = data
+    const { name, email, phone, password } = data
 
-    if (!username || !firstName || !lastName || !email || !phone || !password) {
-        const error = new Error('Username, first name, last name, email, phone, and password are required')
+    if (!name || !email || !phone || !password) {
+        const error = new Error('Name, email, phone, and password are required')
         error.statusCode = 400
         throw error
     }
@@ -74,16 +75,23 @@ export const registerUser = async (data) => {
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const user = await User.create({
-        username: username.trim(),
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        name: name.trim(),
         email: normalizedEmail,
-        phone,
-        password: hashedPassword,
+        phone: phone.trim(),
+        password_hash: hashedPassword,
         role: 'student'
     })
 
-    return user
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profile_image: user.profile_image,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+    }
 }
 
 // Login Service
@@ -100,37 +108,45 @@ export const loginUser = async (email, password) => {
         }
     })
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
         const error = new Error('Email or password is invalid')
         error.statusCode = 401
         throw error
     }
 
     const accessToken = createAccessToken(user)
-
-    // Generate random Refresh Token
     const refreshToken = createRefreshToken()
 
-    // Save refresh token to db
     await saveRefreshToken(user.id, refreshToken)
 
+    const sanitizedUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profile_image: user.profile_image,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+    }
+
     return {
-        user,
+        user: sanitizedUser,
         accessToken,
         refreshToken
     }
 }
 
-// get profile
+// Get Profile
 export const profileUser = async (userId) => {
     const user = await User.findByPk(userId, {
         attributes: {
-            exclude: ["password"]
+            exclude: ['password_hash']
         }
     })
 
     if (!user) {
-        const error = new Error("User not found")
+        const error = new Error('User not found')
         error.statusCode = 404
         throw error
     }
@@ -138,20 +154,118 @@ export const profileUser = async (userId) => {
     return user
 }
 
-// refresh token
+// Update Profile
+export const updateProfile = async (userId, data) => {
+    const user = await User.findByPk(userId)
+    if (!user) {
+        const error = new Error('User not found')
+        error.statusCode = 404
+        throw error
+    }
+
+    // Email update check
+    if (data.email) {
+        const normalizedEmail = data.email.trim().toLowerCase()
+        if (normalizedEmail !== user.email) {
+            const existingUser = await User.findOne({
+                where: {
+                    email: normalizedEmail,
+                    id: { [Op.ne]: userId }
+                }
+            })
+            if (existingUser) {
+                const error = new Error('Email already exists')
+                error.statusCode = 409
+                throw error
+            }
+            user.email = normalizedEmail
+        }
+    }
+
+    if (data.name !== undefined) {
+        if (!data.name.trim()) {
+            const error = new Error('Name cannot be empty')
+            error.statusCode = 400
+            throw error
+        }
+        user.name = data.name.trim()
+    }
+
+    if (data.phone !== undefined) {
+        user.phone = data.phone ? data.phone.trim() : null
+    }
+
+    if (data.profile_image !== undefined) {
+        user.profile_image = data.profile_image
+    }
+
+    // Note: Role and password_hash are never modified here
+    await user.save()
+
+    return await User.findByPk(userId, {
+        attributes: {
+            exclude: ['password_hash']
+        }
+    })
+}
+
+// Change Password
+export const changePassword = async (userId, currentPassword, newPassword) => {
+    if (!currentPassword || !newPassword) {
+        const error = new Error('Current password and new password are required')
+        error.statusCode = 400
+        throw error
+    }
+
+    if (newPassword.length < 8) {
+        const error = new Error('New password must be at least 8 characters')
+        error.statusCode = 400
+        throw error
+    }
+
+    const user = await User.findByPk(userId)
+    if (!user) {
+        const error = new Error('User not found')
+        error.statusCode = 404
+        throw error
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash)
+    if (!isMatch) {
+        const error = new Error('Current password is incorrect')
+        error.statusCode = 400
+        throw error
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12)
+
+    return await sequelize.transaction(async (transaction) => {
+        user.password_hash = hashedPassword
+        await user.save({ transaction })
+
+        // Revoke all refresh tokens for this user on password change
+        await RefreshToken.destroy({
+            where: { userId: user.id },
+            transaction
+        })
+
+        return {
+            message: 'Password changed successfully'
+        }
+    })
+}
+
+// Refresh Token Session
 export const refreshSession = async (oldToken) => {
     if (!oldToken) {
-        const error = new Error("Refresh token is required")
+        const error = new Error('Refresh token is required')
         error.statusCode = 401
         throw error
     }
 
-    // hash old token
     const oldHashToken = hashRefreshToken(oldToken)
 
-    // find old token in db
     return await sequelize.transaction(async (transaction) => {
-
         const storeToken = await RefreshToken.findOne({
             where: {
                 tokenHash: oldHashToken
@@ -161,39 +275,34 @@ export const refreshSession = async (oldToken) => {
         })
 
         if (!storeToken) {
-            const error = new Error("Invalid refresh token")
+            const error = new Error('Invalid refresh token')
             error.statusCode = 401
             throw error
         }
 
-        // check expired
         if (new Date(storeToken.expiresAt) <= new Date()) {
             await storeToken.destroy({ transaction })
 
-            const error = new Error("Refresh token has expired")
+            const error = new Error('Refresh token has expired')
             error.statusCode = 401
             throw error
         }
 
-        // find user
         const user = await User.findByPk(storeToken.userId, {
             transaction
         })
 
         if (!user) {
-            const error = new Error("User not found")
+            const error = new Error('User not found')
             error.statusCode = 404
             throw error
         }
 
-        // delete old token
         await storeToken.destroy({ transaction })
 
-        // generate new tokens
         const accessToken = createAccessToken(user)
         const refreshToken = createRefreshToken()
 
-        // save new refresh token to db
         await saveRefreshToken(user.id, refreshToken, transaction)
 
         return {
@@ -209,10 +318,8 @@ export const logoutUser = async (refreshToken) => {
         return
     }
 
-    // hash refresh token
     const tokenHash = hashRefreshToken(refreshToken)
 
-    // delete refresh token from db
     await RefreshToken.destroy({
         where: {
             tokenHash
@@ -220,9 +327,14 @@ export const logoutUser = async (refreshToken) => {
     })
 }
 
-// forgot password 
-
+// Forgot Password Service
 export const forgotPassword = async (email) => {
+    if (!email) {
+        const error = new Error('Email is required')
+        error.statusCode = 400
+        throw error
+    }
+
     const user = await User.findOne({
         where: {
             email: email.trim().toLowerCase()
@@ -241,10 +353,7 @@ export const forgotPassword = async (email) => {
         }
     })
 
-    // Generate original reset token
     const resetToken = randomBytes(32).toString('hex')
-
-    // Store only hashed token
     const tokenHash = hashResetToken(resetToken)
 
     await PasswordResetToken.create({
@@ -253,7 +362,6 @@ export const forgotPassword = async (email) => {
         expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     })
 
-    // Development only
     if (process.env.NODE_ENV !== 'production') {
         console.log('Reset Token:', resetToken)
         console.log('Reset Token Hash:', tokenHash)
@@ -262,56 +370,54 @@ export const forgotPassword = async (email) => {
     return { message }
 }
 
-
-// reset password
+// Reset Password Service
 export const resetPassword = async (token, newPassword) => {
-  const tokenHash = hashResetToken(token);
-  console.log('Submitted Token Hash:', tokenHash);
+    const tokenHash = hashResetToken(token)
 
-  return await sequelize.transaction(async (transaction) => {
-    // Find reset token
-    const resetRecord = await PasswordResetToken.findOne({
-      where: { tokenHash },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
+    return await sequelize.transaction(async (transaction) => {
+        const resetRecord = await PasswordResetToken.findOne({
+            where: { tokenHash },
+            transaction,
+            lock: transaction.LOCK.UPDATE
+        })
 
-    if (!resetRecord) {
-      throw new Error('Invalid or expired reset token');
-    }
+        if (!resetRecord) {
+            const error = new Error('Invalid or expired reset token')
+            error.statusCode = 400
+            throw error
+        }
 
-    // Check expiration
-    if (resetRecord.expiresAt < new Date()) {
-      throw new Error('Reset token has expired');
-    }
+        if (resetRecord.expiresAt < new Date()) {
+            const error = new Error('Reset token has expired')
+            error.statusCode = 400
+            throw error
+        }
 
-    // Find user
-    const user = await User.findByPk(resetRecord.userId, {
-      transaction,
-    });
+        const user = await User.findByPk(resetRecord.userId, {
+            transaction
+        })
 
-    if (!user) {
-      throw new Error('User not found');
-    }
+        if (!user) {
+            const error = new Error('User not found')
+            error.statusCode = 404
+            throw error
+        }
 
-    // Hash new password
-    user.password = await bcrypt.hash(newPassword, 12);
-    await user.save({ transaction });
+        user.password_hash = await bcrypt.hash(newPassword, 12)
+        await user.save({ transaction })
 
-    // Delete all reset tokens belonging to this user
-    await PasswordResetToken.destroy({
-      where: { userId: user.id },
-      transaction,
-    });
+        await PasswordResetToken.destroy({
+            where: { userId: user.id },
+            transaction
+        })
 
-    // Revoke all refresh tokens
-    await RefreshToken.destroy({
-      where: { userId: user.id },
-      transaction,
-    });
+        await RefreshToken.destroy({
+            where: { userId: user.id },
+            transaction
+        })
 
-    return {
-      message: 'Password reset successfully',
-    };
-  });
-};
+        return {
+            message: 'Password reset successfully'
+        }
+    })
+}
