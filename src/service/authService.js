@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import { randomBytes, createHash } from 'node:crypto'
 import RefreshToken from '../model/refreshToken.js'
 import User from '../model/user.js'
+import PasswordResetToken from '../model/passwordResetToken.js'
 import sequelize from '../config/database.js'
 
 // Generate Access Token
@@ -30,6 +31,10 @@ const createRefreshToken = () => {
 const hashRefreshToken = (token) => {
     return createHash('sha256').update(token).digest('hex')
 }
+// Hash Password Reset Token
+const hashResetToken = (token) => {
+    return createHash('sha256').update(token).digest('hex');
+};
 
 // save refresh token to db
 const saveRefreshToken = async (userId, refreshToken, transaction = null) => {
@@ -217,3 +222,96 @@ export const logoutUser = async (refreshToken) => {
 
 // forgot password 
 
+export const forgotPassword = async (email) => {
+    const user = await User.findOne({
+        where: {
+            email: email.trim().toLowerCase()
+        }
+    })
+
+    const message = 'If your email is registered, you will receive a password reset link.'
+
+    if (!user) {
+        return { message }
+    }
+
+    await PasswordResetToken.destroy({
+        where: {
+            userId: user.id
+        }
+    })
+
+    // Generate original reset token
+    const resetToken = randomBytes(32).toString('hex')
+
+    // Store only hashed token
+    const tokenHash = hashResetToken(resetToken)
+
+    await PasswordResetToken.create({
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+    })
+
+    // Development only
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('Reset Token:', resetToken)
+        console.log('Reset Token Hash:', tokenHash)
+    }
+
+    return { message }
+}
+
+
+// reset password
+export const resetPassword = async (token, newPassword) => {
+  const tokenHash = hashResetToken(token);
+  console.log('Submitted Token Hash:', tokenHash);
+
+  return await sequelize.transaction(async (transaction) => {
+    // Find reset token
+    const resetRecord = await PasswordResetToken.findOne({
+      where: { tokenHash },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!resetRecord) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    // Check expiration
+    if (resetRecord.expiresAt < new Date()) {
+      throw new Error('Reset token has expired');
+    }
+
+    // Find user
+    const user = await User.findByPk(resetRecord.userId, {
+      transaction,
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Hash new password
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save({ transaction });
+
+    // Delete all reset tokens belonging to this user
+    await PasswordResetToken.destroy({
+      where: { userId: user.id },
+      transaction,
+    });
+
+    // Revoke all refresh tokens
+    await RefreshToken.destroy({
+      where: { userId: user.id },
+      transaction,
+    });
+
+    return {
+      message: 'Password reset successfully',
+    };
+  });
+};
