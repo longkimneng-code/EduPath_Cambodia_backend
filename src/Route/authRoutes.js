@@ -1,7 +1,15 @@
-
 import express from 'express'
-import { Login, Register, GetProfile, RefreshToken, Logout,ForgotPassword ,ResetPassword} from "../controller/authController.js"
-import { verifyToken } from "../middleware/authMiddleware.js"
+import {
+    Login,
+    Register,
+    GetProfile,
+    RefreshToken,
+    Logout,
+    ForgotPassword,
+    ResetPassword,
+    ChangePassword
+} from '../controller/authController.js'
+import { verifyToken } from '../middleware/authMiddleware.js'
 
 const router = express.Router()
 
@@ -9,14 +17,14 @@ const router = express.Router()
  * @swagger
  * tags:
  *   name: Authentication
- *   description: EduPath user authentication
+ *   description: EduPath user authentication and credential management
  */
 
 /**
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new student
+ *     summary: Register a new student account
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -25,24 +33,17 @@ const router = express.Router()
  *           schema:
  *             type: object
  *             required:
- *               - username
- *               - firstName
- *               - lastName
+ *               - name
  *               - email
  *               - phone
  *               - password
  *             properties:
- *               username:
+ *               name:
  *                 type: string
- *                 example: daro123
- *               firstName:
- *                 type: string
- *                 example: Daro
- *               lastName:
- *                 type: string
- *                 example: Sok
+ *                 example: Sok Daro
  *               email:
  *                 type: string
+ *                 format: email
  *                 example: daro@gmail.com
  *               phone:
  *                 type: string
@@ -50,14 +51,47 @@ const router = express.Router()
  *               password:
  *                 type: string
  *                 format: password
+ *                 minLength: 8
  *                 example: Password123
  *     responses:
  *       201:
  *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     name:
+ *                       type: string
+ *                       example: Sok Daro
+ *                     email:
+ *                       type: string
+ *                       example: daro@gmail.com
+ *                     phone:
+ *                       type: string
+ *                       example: "012345678"
+ *                     role:
+ *                       type: string
+ *                       example: student
+ *                     profile_image:
+ *                       type: string
+ *                       nullable: true
+ *                       example: null
  *       400:
  *         description: Missing required fields
  *       409:
  *         description: Email already exists
+ *       500:
+ *         description: Internal server error
  */
 router.post('/register', Register)
 
@@ -79,6 +113,7 @@ router.post('/register', Register)
  *             properties:
  *               email:
  *                 type: string
+ *                 format: email
  *                 example: daro@gmail.com
  *               password:
  *                 type: string
@@ -87,10 +122,45 @@ router.post('/register', Register)
  *     responses:
  *       200:
  *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Login successful
+ *                 accessToken:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     name:
+ *                       type: string
+ *                       example: Sok Daro
+ *                     email:
+ *                       type: string
+ *                       example: daro@gmail.com
+ *                     phone:
+ *                       type: string
+ *                       example: "012345678"
+ *                     role:
+ *                       type: string
+ *                       example: student
+ *                     profile_image:
+ *                       type: string
+ *                       nullable: true
+ *                       example: null
  *       400:
  *         description: Email and password are required
  *       401:
  *         description: Invalid email or password
+ *       500:
+ *         description: Internal server error
  */
 router.post('/login', Login)
 
@@ -98,8 +168,7 @@ router.post('/login', Login)
  * @swagger
  * /api/auth/profile:
  *   get:
- *     summary: Get current user profile
- *     description: Get the profile of the currently authenticated user.
+ *     summary: Get current authenticated user
  *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
@@ -107,33 +176,48 @@ router.post('/login', Login)
  *       200:
  *         description: Profile retrieved successfully
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - missing or invalid token
  *       404:
  *         description: User not found
+ *       500:
+ *         description: Internal server error
  */
-router.get("/profile", verifyToken, GetProfile)
+router.get('/profile', verifyToken, GetProfile)
 
 /**
  * @swagger
  * /api/auth/refresh:
  *   post:
  *     summary: Refresh access token
- *     description: Generate a new access token and refresh token using the refresh token stored in the HTTP-only cookie.
+ *     description: Generate a new access token and rotate refresh token using cookie.
  *     tags: [Authentication]
  *     responses:
  *       200:
  *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Token refreshed successfully
+ *                 accessToken:
+ *                   type: string
+ *                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
  *       401:
  *         description: Invalid or expired refresh token
+ *       500:
+ *         description: Internal server error
  */
-router.post("/refresh", RefreshToken)
+router.post('/refresh', RefreshToken)
 
 /**
  * @swagger
  * /api/auth/logout:
  *   post:
  *     summary: Logout user
- *     description: Delete the refresh token from the database and clear the refresh token cookie.
+ *     description: Revoke the refresh token from database and clear the cookie.
  *     tags: [Authentication]
  *     responses:
  *       200:
@@ -141,14 +225,13 @@ router.post("/refresh", RefreshToken)
  *       500:
  *         description: Logout failed
  */
-router.post("/logout", Logout)
+router.post('/logout', Logout)
 
 /**
  * @swagger
  * /api/auth/forgot-password:
  *   post:
- *     summary: Request a password reset
- *     description: Sends a password reset link if the email is registered. The same response is returned whether the account exists or not.
+ *     summary: Request a password reset link
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -179,14 +262,13 @@ router.post("/logout", Logout)
  *       500:
  *         description: Internal server error
  */
-router.post('/forgot-password', ForgotPassword);
+router.post('/forgot-password', ForgotPassword)
 
 /**
  * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Reset user password
- *     description: Resets the user's password using a valid, unexpired password reset token.
+ *     summary: Reset password with reset token
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -213,6 +295,45 @@ router.post('/forgot-password', ForgotPassword);
  *     responses:
  *       200:
  *         description: Password reset successfully
+ *       400:
+ *         description: Missing fields, passwords do not match, or invalid/expired reset token
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/reset-password', ResetPassword)
+
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   put:
+ *     summary: Change password for authenticated user
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: Password123
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: NewPassword456
+ *               confirmPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: NewPassword456
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
  *         content:
  *           application/json:
  *             schema:
@@ -220,11 +341,14 @@ router.post('/forgot-password', ForgotPassword);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Password reset successfully
+ *                   example: Password changed successfully
  *       400:
- *         description: Missing fields, passwords do not match, or invalid/expired reset token
+ *         description: Current password incorrect, validation error, or passwords do not match
+ *       401:
+ *         description: Unauthorized - missing or invalid token
  *       500:
  *         description: Internal server error
  */
-router.post('/reset-password', ResetPassword);
+router.put('/change-password', verifyToken, ChangePassword)
+
 export default router

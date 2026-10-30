@@ -1,4 +1,3 @@
-
 import swaggerJsdoc from "swagger-jsdoc"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -6,7 +5,9 @@ import { fileURLToPath } from "node:url"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const routeFile = path.resolve(__dirname, "../Route/authRoutes.js")
+const authRouteFile = path.resolve(__dirname, "../Route/authRoutes.js")
+const userRouteFile = path.resolve(__dirname, "../Route/userRoutes.js")
+const studentRouteFile = path.resolve(__dirname, "../Route/studentRoutes.js")
 
 const swaggerOptions = {
     definition: {
@@ -31,12 +32,11 @@ const swaggerOptions = {
             }
         ]
     },
-    apis: [routeFile]
+    apis: [authRouteFile, userRouteFile, studentRouteFile]
 }
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions)
 
-console.log("Swagger scanning:", routeFile)
 console.log("Swagger detected paths:", Object.keys(swaggerSpec.paths || {}))
 
 export default swaggerSpec
