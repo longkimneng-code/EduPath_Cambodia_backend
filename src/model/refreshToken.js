@@ -16,7 +16,7 @@ const RefreshToken = sequelize.define(
       field: 'userId',
       references: {
         model: 'users',
-        key: 'user_id',
+        key: 'id',
       },
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',

@@ -1,5 +1,5 @@
 
-import { registerUser,loginUser,profileUser,logoutUser,refreshSession } from '../service/authService.js'
+import { registerUser,loginUser,profileUser,logoutUser,refreshSession,forgotPassword,resetPassword } from '../service/authService.js'
 
 // Register Controller
 export const Register = async (req, res) => {
@@ -133,3 +133,72 @@ export const Logout = async(req,res)=>{
         console.log(error)
     }
 }
+
+// forgot password 
+
+export const ForgotPassword = async (req,res) => {
+    try {
+        const {email} = req.body
+        const result = await forgotPassword(email)
+
+        return res.status(200).json({
+            message: result.message
+
+        })
+    }catch (error) {
+        console.log("Forgot Password Error:", error);
+        return res.status(500).json({
+        message: "Internal server error",
+    });
+    }
+} 
+
+// reset password
+
+export const ResetPassword = async (req, res) => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    // Validate required fields
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        message: "All fields are required",
+      });
+    }
+
+    // Check password confirmation
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "Passwords do not match",
+      });
+    }
+
+    // Validate password length
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters",
+      });
+    }
+
+    const result = await resetPassword(token, newPassword);
+
+    return res.status(200).json({
+      message: result.message,
+    });
+  } catch (error) {
+    console.log("Reset Password Error:", error);
+
+    if (
+      error.message === "Invalid or expired reset token" ||
+      error.message === "Reset token has expired"
+    ) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
