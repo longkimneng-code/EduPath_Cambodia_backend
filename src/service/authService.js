@@ -6,7 +6,9 @@ import RefreshToken from '../model/refreshToken.js'
 import User from '../model/user.js'
 import PasswordResetToken from '../model/passwordResetToken.js'
 import StudentProfile from '../model/studentProfile.js'
+import EmailVerificationToken from '../model/emailVerificationToken.js'
 import sequelize from '../config/database.js'
+import { sendVerificationEmail } from './emailService.js'
 
 // Generate Access Token
 export const createAccessToken = (user) => {
@@ -52,6 +54,7 @@ const saveRefreshToken = async (userId, refreshToken, transaction = null) => {
 }
 
 // Register Service
+
 export const registerUser = async (data) => {
     const { name, email, phone, password } = data
 
@@ -74,38 +77,54 @@ export const registerUser = async (data) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12)
+    const verificationToken = randomBytes(32).toString('hex')
+    const tokenHash = createHash('sha256').update(verificationToken).digest('hex')
+
     const transaction = await sequelize.transaction()
+
+    let user
+
     try {
-        
-        const user = await User.create({
+        user = await User.create({
             name: name.trim(),
             email: normalizedEmail,
             phone: phone.trim(),
             password_hash: hashedPassword,
             role: 'student'
-        },{transaction})
-        
+        }, { transaction })
+
         await StudentProfile.create({
             user_id: user.id,
-        },{transaction})
-        
+        }, { transaction })
+
+        await EmailVerificationToken.create({
+            userId: user.id,
+            tokenHash,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        }, { transaction })
+
         await transaction.commit()
-        
-        return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            profile_image: user.profile_image,
-            created_at: user.created_at,
-            updated_at: user.updated_at
-        }
+
     } catch (error) {
         await transaction.rollback()
         throw error
     }
+
+    await sendVerificationEmail(normalizedEmail, verificationToken)
+
+    return {
+        message: 'User registered successfully. Please check your email to verify your account.',
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profile_image: user.profile_image,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+    }
 }
+
 
 // Login Service
 export const loginUser = async (email, password) => {

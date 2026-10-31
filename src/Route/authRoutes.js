@@ -7,7 +7,8 @@ import {
     Logout,
     ForgotPassword,
     ResetPassword,
-    ChangePassword
+    ChangePassword,
+    VerifyEmail
 } from '../controller/authController.js'
 import { verifyToken } from '../middleware/authMiddleware.js'
 
@@ -350,5 +351,27 @@ router.post('/reset-password', ResetPassword)
  *         description: Internal server error
  */
 router.put('/change-password', verifyToken, ChangePassword)
+
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   get:
+ *     summary: Verify email with verification token
+ *     tags: [Authentication]
+ *     parameters:
+ *       - name: token
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *       400:
+ *         description: Token is required
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/verify-email', VerifyEmail)
 
 export default router
