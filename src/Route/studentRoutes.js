@@ -4,7 +4,8 @@ import {
     GetStudentProfile,
     UpdateStudentProfile
 } from '../controller/studentController.js'
-import { verifyToken, requireRole } from '../middleware/authMiddleware.js'
+import { verifyToken } from '../middleware/authMiddleware.js'
+import roleMiddleware from '../middleware/roleMiddleware.js'
 
 const router = express.Router()
 
@@ -89,7 +90,7 @@ const router = express.Router()
  *       500:
  *         description: Internal server error
  */
-router.get('/profile', verifyToken, requireRole('student'), GetStudentProfile)
+router.get('/profile', verifyToken, roleMiddleware('student'), GetStudentProfile)
 
 /**
  * @swagger
@@ -172,7 +173,7 @@ router.get('/profile', verifyToken, requireRole('student'), GetStudentProfile)
  *       500:
  *         description: Internal server error
  */
-router.post('/profile', verifyToken, requireRole('student'), CreateStudentProfile)
+router.post('/profile', verifyToken, roleMiddleware('student'), CreateStudentProfile)
 
 /**
  * @swagger
@@ -253,7 +254,7 @@ router.post('/profile', verifyToken, requireRole('student'), CreateStudentProfil
  *       500:
  *         description: Internal server error
  */
-router.put('/profile', verifyToken, requireRole('student'), UpdateStudentProfile)
+router.put('/profile', verifyToken, roleMiddleware('student'), UpdateStudentProfile)
 
 export default router
 

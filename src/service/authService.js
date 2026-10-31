@@ -5,6 +5,7 @@ import { Op } from 'sequelize'
 import RefreshToken from '../model/refreshToken.js'
 import User from '../model/user.js'
 import PasswordResetToken from '../model/passwordResetToken.js'
+import StudentProfile from '../model/studentProfile.js'
 import sequelize from '../config/database.js'
 
 // Generate Access Token
@@ -73,24 +74,36 @@ export const registerUser = async (data) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12)
-
-    const user = await User.create({
-        name: name.trim(),
-        email: normalizedEmail,
-        phone: phone.trim(),
-        password_hash: hashedPassword,
-        role: 'student'
-    })
-
-    return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        profile_image: user.profile_image,
-        created_at: user.created_at,
-        updated_at: user.updated_at
+    const transaction = await sequelize.transaction()
+    try {
+        
+        const user = await User.create({
+            name: name.trim(),
+            email: normalizedEmail,
+            phone: phone.trim(),
+            password_hash: hashedPassword,
+            role: 'student'
+        },{transaction})
+        
+        await StudentProfile.create({
+            user_id: user.id,
+        },{transaction})
+        
+        await transaction.commit()
+        
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            profile_image: user.profile_image,
+            created_at: user.created_at,
+            updated_at: user.updated_at
+        }
+    } catch (error) {
+        await transaction.rollback()
+        throw error
     }
 }
 
