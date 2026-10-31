@@ -1,4 +1,5 @@
 import { registerUser, loginUser, profileUser, logoutUser, refreshSession, forgotPassword, resetPassword, changePassword } from '../service/authService.js'
+import {verifyEmail} from '../service/emailService.js'
 
 // Register Controller
 export const Register = async (req, res) => {
@@ -205,6 +206,30 @@ export const ChangePassword = async (req, res) => {
         })
     } catch (error) {
         console.error('Change Password error:', error.message)
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode ? error.message : 'Internal server error'
+        })
+    }
+}
+
+
+// Verify Email
+export const VerifyEmail = async (req, res) => {
+    try {
+        const { token } = req.body
+
+        if (!token) {
+            return res.status(400).json({
+                message: 'Token is required'
+            })
+        }
+        await verifyEmail(token)
+
+        return res.status(200).json({
+            message: 'Email verified successfully'
+        })
+    } catch (error) {
+        console.error('Verify Email error:', error.message)
         return res.status(error.statusCode || 500).json({
             message: error.statusCode ? error.message : 'Internal server error'
         })

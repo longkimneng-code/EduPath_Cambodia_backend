@@ -41,6 +41,11 @@ const User = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: true,
     },
+    isEmailVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_email_verified'
+    }
   },
   {
     tableName: 'users',
