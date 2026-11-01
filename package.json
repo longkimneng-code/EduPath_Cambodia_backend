@@ -4,10 +4,13 @@
   "description": "Hello gay neng (Test git)",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "start": "node src/server.js",
     "migrate": "npx sequelize-cli db:migrate",
-    "migrate:undo": "npx sequelize-cli db:migrate:undo"
+    "migrate:undo": "npx sequelize-cli db:migrate:undo",
+    "db:discovery": "node src/scripts/setupDiscovery.js",
+    "seed:universities": "node src/seeders/universities.js",
+    "dev": "nodemon src/server.js"
   },
   "keywords": [],
   "author": "",
