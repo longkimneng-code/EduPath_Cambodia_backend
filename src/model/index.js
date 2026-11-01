@@ -1,3 +1,6 @@
+import University from './university.js'
+import Major from './major.js'
+import UniversityMajor from './universityMajor.js'
 import User from './user.js'
 import RefreshToken from './refreshToken.js'
 import PasswordResetToken from './passwordResetToken.js'
@@ -36,4 +39,18 @@ StudentProfile.belongsTo(User, {
     as: 'user'
 })
 
-export { User, RefreshToken, PasswordResetToken, StudentProfile }
+University.belongsToMany(Major, {
+    through: UniversityMajor,
+    foreignKey: 'universityId',
+    otherKey: 'majorId',
+    as: 'majors'
+})
+
+Major.belongsToMany(University, {
+    through: UniversityMajor,
+    foreignKey: 'majorId',
+    otherKey: 'universityId',
+    as: 'universities'
+})
+
+export { User, RefreshToken, PasswordResetToken, StudentProfile, University, Major, UniversityMajor }
