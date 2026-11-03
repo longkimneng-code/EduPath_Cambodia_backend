@@ -22,6 +22,24 @@ export const sendVerificationEmail = async (email, token) => {
     })
 }
 
+// send password reset email 
+export const sendPasswordResetEmail = async (email, token) => {
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
+    await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,  
+        subject: 'Reset Your EduPath Cambodia Password',
+        html: `
+            <h2>Password Reset Request</h2>
+            <p>We received a request to reset your password.</p>
+            <p>Click the link below to reset your password.</p>
+            <a href="${resetLink}">Reset Password</a>
+            <p>This link expires in 15 minutes.</p>
+            <p>If you did not request a password reset, please ignore this email.</p>
+        `
+    })
+}
+
 export const verifyEmail = async (token) => {
     if (!token) {
         const error = new Error('Token is required');

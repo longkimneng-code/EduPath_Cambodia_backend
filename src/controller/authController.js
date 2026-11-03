@@ -1,4 +1,4 @@
-import { registerUser, loginUser, profileUser, logoutUser, refreshSession, forgotPassword, resetPassword, changePassword } from '../service/authService.js'
+import { registerUser, loginUser, logoutUser, refreshSession, forgotPassword, resetPassword, changePassword } from '../service/authService.js'
 import {verifyEmail} from '../service/emailService.js'
 
 // Register Controller
@@ -49,21 +49,6 @@ export const Login = async (req, res) => {
     }
 }
 
-// Get Profile
-export const GetProfile = async (req, res) => {
-    try {
-        const user = await profileUser(req.user.id)
-        return res.status(200).json({
-            message: 'Profile retrieved successfully',
-            user
-        })
-    } catch (error) {
-        console.error('Get Profile error:', error.message)
-        return res.status(error.statusCode || 500).json({
-            message: error.statusCode ? error.message : 'Internal server error'
-        })
-    }
-}
 
 // Refresh Token
 export const RefreshToken = async (req, res) => {
@@ -173,9 +158,9 @@ export const ChangePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword, confirmPassword } = req.body
 
-        if (!currentPassword || !newPassword) {
+        if (!currentPassword || !newPassword || !confirmPassword) {
             return res.status(400).json({
-                message: 'Current password and new password are required'
+                message: 'Current password, new password, and confirm password are required'
             })
         }
 
