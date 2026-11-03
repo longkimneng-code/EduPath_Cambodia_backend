@@ -8,7 +8,7 @@ import PasswordResetToken from '../model/passwordResetToken.js'
 import StudentProfile from '../model/studentProfile.js'
 import EmailVerificationToken from '../model/emailVerificationToken.js'
 import sequelize from '../config/database.js'
-import { sendVerificationEmail } from './emailService.js'
+import { sendVerificationEmail,sendPasswordResetEmail } from './emailService.js'
 
 // Generate Access Token
 export const createAccessToken = (user) => {
@@ -140,9 +140,16 @@ export const loginUser = async (email, password) => {
         }
     })
 
+
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
         const error = new Error('Email or password is invalid')
         error.statusCode = 401
+        throw error
+    }
+
+    if (!user.isEmailVerified) {
+        const error = new Error('Please verify your email before logging in')
+        error.statusCode = 403
         throw error
     }
 
@@ -394,16 +401,25 @@ export const forgotPassword = async (email) => {
         expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     })
 
-    if (process.env.NODE_ENV !== 'production') {
-        console.log('Reset Token:', resetToken)
-        console.log('Reset Token Hash:', tokenHash)
-    }
+    await sendPasswordResetEmail(email, resetToken)
 
     return { message }
 }
 
 // Reset Password Service
 export const resetPassword = async (token, newPassword) => {
+
+    if(!token || !newPassword) {
+        const error = new Error('Reset token and new password are required')
+        error.statusCode = 400
+        throw error
+    }
+
+    if (newPassword.length < 8) {
+        const error = new Error('New password must be at least 8 characters')
+        error.statusCode = 400
+        throw error
+    }
     const tokenHash = hashResetToken(token)
 
     return await sequelize.transaction(async (transaction) => {

@@ -1,46 +1,6 @@
 import User from '../model/user.js'
 import StudentProfile from '../model/studentProfile.js'
 
-// Create Student Profile
-export const createStudentProfile = async (userId, data) => {
-    // Verify user exists and has student role
-    const user = await User.findByPk(userId)
-    if (!user) {
-        const error = new Error('User not found')
-        error.statusCode = 404
-        throw error
-    }
-
-    if (user.role !== 'student') {
-        const error = new Error('Only student accounts can manage student profiles')
-        error.statusCode = 403
-        throw error
-    }
-
-    // Check for duplicate profile
-    const existingProfile = await StudentProfile.findOne({
-        where: { user_id: userId }
-    })
-
-    if (existingProfile) {
-        const error = new Error('Student profile already exists for this user')
-        error.statusCode = 409
-        throw error
-    }
-
-    const { province, date_of_birth, interests, strengths, career_goal } = data
-
-    const profile = await StudentProfile.create({
-        user_id: userId,
-        province: province || null,
-        date_of_birth: date_of_birth || null,
-        interests: interests || null,
-        strengths: strengths || null,
-        career_goal: career_goal || null
-    })
-
-    return profile
-}
 
 // Get Student Profile
 export const getStudentProfile = async (userId) => {
@@ -79,6 +39,11 @@ export const getStudentProfile = async (userId) => {
 
 // Update Student Profile
 export const updateStudentProfile = async (userId, data) => {
+    if (Object.keys(data).length === 0) {
+        const error = new Error('At least one field is required')
+        error.statusCode = 400
+        throw error
+    }
     const user = await User.findByPk(userId)
     if (!user) {
         const error = new Error('User not found')

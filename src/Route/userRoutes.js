@@ -70,7 +70,7 @@ router.get('/profile', verifyToken, GetUserProfile)
 /**
  * @swagger
  * /api/users/profile:
- *   put:
+ *   patch:
  *     summary: Update current authenticated user profile
  *     description: Update user details. Roles cannot be updated through this endpoint.
  *     tags: [Users]
@@ -145,7 +145,7 @@ router.get('/profile', verifyToken, GetUserProfile)
  *       500:
  *         description: Internal server error
  */
-router.put('/profile', verifyToken, UpdateUserProfile)
+router.patch('/profile', verifyToken, UpdateUserProfile)
 
 export default router
 

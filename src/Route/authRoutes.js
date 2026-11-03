@@ -2,7 +2,6 @@ import express from 'express'
 import {
     Login,
     Register,
-    GetProfile,
     RefreshToken,
     Logout,
     ForgotPassword,
@@ -10,7 +9,9 @@ import {
     ChangePassword,
     VerifyEmail
 } from '../controller/authController.js'
+import {authLimiter ,emailLimiter,passwordLimiter} from '../middleware/rateLimitMiddleware.js'
 import { verifyToken } from '../middleware/authMiddleware.js'
+
 
 const router = express.Router()
 
@@ -94,7 +95,7 @@ const router = express.Router()
  *       500:
  *         description: Internal server error
  */
-router.post('/register', Register)
+router.post('/register', authLimiter, Register)
 
 /**
  * @swagger
@@ -163,27 +164,8 @@ router.post('/register', Register)
  *       500:
  *         description: Internal server error
  */
-router.post('/login', Login)
+router.post('/login', authLimiter, Login)
 
-/**
- * @swagger
- * /api/auth/profile:
- *   get:
- *     summary: Get current authenticated user
- *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Profile retrieved successfully
- *       401:
- *         description: Unauthorized - missing or invalid token
- *       404:
- *         description: User not found
- *       500:
- *         description: Internal server error
- */
-router.get('/profile', verifyToken, GetProfile)
 
 /**
  * @swagger
@@ -263,7 +245,7 @@ router.post('/logout', Logout)
  *       500:
  *         description: Internal server error
  */
-router.post('/forgot-password', ForgotPassword)
+router.post('/forgot-password', emailLimiter, ForgotPassword)
 
 /**
  * @swagger
@@ -301,7 +283,7 @@ router.post('/forgot-password', ForgotPassword)
  *       500:
  *         description: Internal server error
  */
-router.post('/reset-password', ResetPassword)
+router.post('/reset-password', passwordLimiter, ResetPassword)
 
 /**
  * @swagger
@@ -350,7 +332,7 @@ router.post('/reset-password', ResetPassword)
  *       500:
  *         description: Internal server error
  */
-router.put('/change-password', verifyToken, ChangePassword)
+router.put('/change-password', verifyToken, passwordLimiter, ChangePassword)
 
 /**
  * @swagger
@@ -372,6 +354,6 @@ router.put('/change-password', verifyToken, ChangePassword)
  *       500:
  *         description: Internal server error
  */
-router.get('/verify-email', VerifyEmail)
+router.get('/verify-email', emailLimiter, VerifyEmail)
 
 export default router
