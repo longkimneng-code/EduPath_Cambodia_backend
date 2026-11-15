@@ -1,7 +1,18 @@
 
 import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
-dotenv.config({ path: '../.env' });
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({
+  path: path.resolve(
+    __dirname,
+    process.env.ENV_FILE || "../../.env"
+  ),
+});
 
 const sequelize = new Sequelize(
   process.env.DB_NAME,
@@ -9,16 +20,18 @@ const sequelize = new Sequelize(
   process.env.DB_PASSWORD,
   {
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+    port: Number(process.env.DB_PORT),
     dialect: "mysql",
     logging: false,
-    dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false
-    }
+    dialectOptions: process.env.DB_SSL === "true"
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        }
+      : {},
   }
-}
 );
 
 export default sequelize;

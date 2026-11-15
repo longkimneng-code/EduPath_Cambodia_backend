@@ -1,3 +1,23 @@
+# Environment variables
 .env
+.env.*
+!.env.docker.example
+
+# Dependencies
 node_modules/
+
+# Sequelize
 sequelize-meta.json
+
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

@@ -7,37 +7,48 @@ import transporter from '../config/email.js';
 
 // Send Verification Email
 export const sendVerificationEmail = async (email, token) => {
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const verificationLink = `${frontendUrl}/verify-email?token=${token}`
 
-    await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Verify Your EduPath Cambodia Account',
-        html: `
-            <h2>Welcome to EduPath Cambodia!</h2>
-            <p>Please click the link below to verify your email address.</p>
-            <a href="${verificationLink}">Verify Email</a>
-            <p>This link expires in 24 hours.</p>
-        `
-    })
+    try {
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Verify Your EduPath Cambodia Account',
+            html: `
+                <h2>Welcome to EduPath Cambodia!</h2>
+                <p>Please click the link below to verify your email address.</p>
+                <a href="${verificationLink}">Verify Email</a>
+                <p>This link expires in 24 hours.</p>
+            `
+        })
+    } catch (error) {
+        console.error('Email sending failed (verification):', error.message)
+    }
 }
 
 // send password reset email 
 export const sendPasswordResetEmail = async (email, token) => {
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
-    await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,  
-        subject: 'Reset Your EduPath Cambodia Password',
-        html: `
-            <h2>Password Reset Request</h2>
-            <p>We received a request to reset your password.</p>
-            <p>Click the link below to reset your password.</p>
-            <a href="${resetLink}">Reset Password</a>
-            <p>This link expires in 15 minutes.</p>
-            <p>If you did not request a password reset, please ignore this email.</p>
-        `
-    })
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173'
+    const resetLink = `${frontendUrl}/reset-password?token=${token}`
+
+    try {
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,  
+            subject: 'Reset Your EduPath Cambodia Password',
+            html: `
+                <h2>Password Reset Request</h2>
+                <p>We received a request to reset your password.</p>
+                <p>Click the link below to reset your password.</p>
+                <a href="${resetLink}">Reset Password</a>
+                <p>This link expires in 15 minutes.</p>
+                <p>If you did not request a password reset, please ignore this email.</p>
+            `
+        })
+    } catch (error) {
+        console.error('Email sending failed (password reset):', error.message)
+    }
 }
 
 export const verifyEmail = async (token) => {

@@ -110,6 +110,10 @@ export const registerUser = async (data) => {
         throw error
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('Verification Token:', verificationToken)
+    }
+
     await sendVerificationEmail(normalizedEmail, verificationToken)
 
     return {
@@ -400,6 +404,10 @@ export const forgotPassword = async (email) => {
         tokenHash,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     })
+
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('Reset Token:', resetToken)
+    }
 
     await sendPasswordResetEmail(email, resetToken)
 

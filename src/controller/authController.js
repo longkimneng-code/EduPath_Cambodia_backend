@@ -1,6 +1,21 @@
 import { registerUser, loginUser, logoutUser, refreshSession, forgotPassword, resetPassword, changePassword } from '../service/authService.js'
 import {verifyEmail} from '../service/emailService.js'
 
+const getCookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
+    path: '/api/auth',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+})
+
+const getClearCookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.COOKIE_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax'),
+    path: '/api/auth'
+})
+
 // Register Controller
 export const Register = async (req, res) => {
     try {
@@ -27,13 +42,7 @@ export const Login = async (req, res) => {
         const { user, accessToken, refreshToken } = await loginUser(email, password)
 
         // Set Refresh Token Cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/api/auth',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        })
+        res.cookie('refreshToken', refreshToken, getCookieOptions())
 
         return res.status(200).json({
             message: 'Login successful',
@@ -56,13 +65,7 @@ export const RefreshToken = async (req, res) => {
         const oldRefreshToken = req.cookies.refreshToken
         const token = await refreshSession(oldRefreshToken)
 
-        res.cookie('refreshToken', token.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/api/auth',
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        })
+        res.cookie('refreshToken', token.refreshToken, getCookieOptions())
         return res.status(200).json({
             message: 'Token refreshed successfully',
             accessToken: token.accessToken
@@ -82,12 +85,7 @@ export const Logout = async (req, res) => {
         await logoutUser(refreshToken)
 
         // Clear cookie
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/api/auth'
-        })
+        res.clearCookie('refreshToken', getClearCookieOptions())
 
         return res.status(200).json({
             message: 'Logout successfully'
@@ -179,12 +177,7 @@ export const ChangePassword = async (req, res) => {
         const result = await changePassword(req.user.id, currentPassword, newPassword)
 
         // Clear refresh token cookie since tokens are revoked
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            path: '/api/auth'
-        })
+        res.clearCookie('refreshToken', getClearCookieOptions())
 
         return res.status(200).json({
             message: result.message
@@ -201,7 +194,7 @@ export const ChangePassword = async (req, res) => {
 // Verify Email
 export const VerifyEmail = async (req, res) => {
     try {
-        const { token } = req.body
+        const token = req.query?.token || req.body?.token
 
         if (!token) {
             return res.status(400).json({
