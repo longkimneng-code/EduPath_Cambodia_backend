@@ -161,6 +161,16 @@ router.post('/register', authLimiter, Register)
  *         description: Email and password are required
  *       401:
  *         description: Invalid email or password
+ *       403:
+ *         description: Email not verified - please verify email before logging in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Please verify your email before logging in
  *       500:
  *         description: Internal server error
  */
@@ -338,7 +348,8 @@ router.put('/change-password', verifyToken, passwordLimiter, ChangePassword)
  * @swagger
  * /api/auth/verify-email:
  *   get:
- *     summary: Verify email with verification token
+ *     summary: Verify email via link query parameter
+ *     description: Endpoint visited when user clicks email verification link.
  *     tags: [Authentication]
  *     parameters:
  *       - name: token
@@ -346,14 +357,55 @@ router.put('/change-password', verifyToken, passwordLimiter, ChangePassword)
  *         required: true
  *         schema:
  *           type: string
+ *         example: "64-character-hex-token"
  *     responses:
  *       200:
  *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email verified successfully
  *       400:
- *         description: Token is required
+ *         description: Token is missing, invalid, or expired
+ *       500:
+ *         description: Internal server error
+ *   post:
+ *     summary: Verify email via request body
+ *     description: Endpoint used by single page apps sending JSON token.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "64-character-hex-token"
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Email verified successfully
+ *       400:
+ *         description: Token is missing, invalid, or expired
  *       500:
  *         description: Internal server error
  */
 router.get('/verify-email', emailLimiter, VerifyEmail)
+router.post('/verify-email', emailLimiter, VerifyEmail)
 
 export default router

@@ -1,8 +1,12 @@
+
 const path = require('path');
 const dotenv = require('dotenv');
 
 dotenv.config({
-  path: path.resolve(__dirname, '../../.env'),
+  path: path.resolve(
+    __dirname,
+    process.env.ENV_FILE || '../../.env'
+  ),
 });
 
 module.exports = {
@@ -14,11 +18,13 @@ module.exports = {
     port: Number(process.env.DB_PORT),
     dialect: 'mysql',
     logging: false,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-    },
+    dialectOptions: process.env.DB_SSL === 'true'
+      ? {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      }
+      : {},
   },
 };

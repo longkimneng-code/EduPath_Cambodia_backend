@@ -95,7 +95,7 @@ router.get('/profile', verifyToken, roleMiddleware('student'), GetStudentProfile
  * @swagger
  * /api/students/profile:
  *   patch:
- *     summary: Update student profile for authenticated student
+ *     summary: Update student profile for authenticated student (PATCH)
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -161,6 +161,85 @@ router.get('/profile', verifyToken, roleMiddleware('student'), GetStudentProfile
  *                     created_at:
  *                       type: string
  *                       example: "2026-10-30T10:00:00.000Z"
+ *       400:
+ *         description: Validation error - at least one field is required
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       403:
+ *         description: Access forbidden - only student accounts allowed
+ *       404:
+ *         description: Student profile not found
+ *       500:
+ *         description: Internal server error
+ *   put:
+ *     summary: Update student profile for authenticated student (PUT)
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               province:
+ *                 type: string
+ *                 example: Siem Reap
+ *               date_of_birth:
+ *                 type: string
+ *                 format: date
+ *                 example: "2004-05-15"
+ *               interests:
+ *                 type: string
+ *                 example: Cloud Computing, DevOps
+ *               strengths:
+ *                 type: string
+ *                 example: System design, critical thinking
+ *               career_goal:
+ *                 type: string
+ *                 example: Cloud Solutions Architect
+ *     responses:
+ *       200:
+ *         description: Student profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Student profile updated successfully
+ *                 profile:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     user_id:
+ *                       type: integer
+ *                       example: 1
+ *                     province:
+ *                       type: string
+ *                       example: Siem Reap
+ *                     date_of_birth:
+ *                       type: string
+ *                       format: date
+ *                       example: "2004-05-15"
+ *                     interests:
+ *                       type: string
+ *                       example: Cloud Computing, DevOps
+ *                     strengths:
+ *                       type: string
+ *                       example: System design, critical thinking
+ *                     career_goal:
+ *                       type: string
+ *                       example: Cloud Solutions Architect
+ *                     created_at:
+ *                       type: string
+ *                       example: "2026-10-30T10:00:00.000Z"
+ *       400:
+ *         description: Validation error - at least one field is required
  *       401:
  *         description: Unauthorized - missing or invalid token
  *       403:
@@ -171,6 +250,7 @@ router.get('/profile', verifyToken, roleMiddleware('student'), GetStudentProfile
  *         description: Internal server error
  */
 router.patch('/profile', verifyToken, roleMiddleware('student'), UpdateStudentProfile)
+router.put('/profile', verifyToken, roleMiddleware('student'), UpdateStudentProfile)
 
 export default router
 
