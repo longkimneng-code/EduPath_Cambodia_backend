@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "test": "node --test",
+    "test:ai": "node --test test/ai.test.js test/geminiFailover.test.js",
     "test:discovery": "node --test test/discovery.test.js",
     "test:api": "node --test test/api.complete.test.js",
     "start": "node src/server.js",

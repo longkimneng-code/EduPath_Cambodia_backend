@@ -9,6 +9,7 @@ const authRouteFile = path.resolve(__dirname, "../Route/authRoutes.js")
 const userRouteFile = path.resolve(__dirname, "../Route/userRoutes.js")
 const studentRouteFile = path.resolve(__dirname, "../Route/studentRoutes.js")
 const discoveryRoutes = path.resolve(__dirname,"../Route/discoveryRoutes.js")
+const aiRouteFile = path.resolve(__dirname, "../Route/aiRoutes.js")
 
 const swaggerOptions = {
     definition: {
@@ -33,7 +34,7 @@ const swaggerOptions = {
             }
         ]
     },
-    apis: [authRouteFile, userRouteFile, studentRouteFile,discoveryRoutes]
+    apis: [authRouteFile, userRouteFile, studentRouteFile, discoveryRoutes, aiRouteFile]
 }
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions)

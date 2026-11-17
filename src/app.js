@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import authRoute from './Route/authRoutes.js';
 import userRoute from './Route/userRoutes.js';
 import studentRoute from './Route/studentRoutes.js';
+import aiRoute from './Route/aiRoutes.js';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger.js';
 import { createDiscoveryRoutes } from './Route/discoveryRoutes.js';
@@ -43,6 +44,7 @@ export function createApp({ discoveryService, logger = console } = {}) {
   app.use('/api/auth', authRoute);
   app.use('/api/users', userRoute);
   app.use('/api/students', studentRoute);
+  app.use('/api/ai', aiRoute);
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use('/api', createDiscoveryRoutes(discoveryService));
   app.use((req, res) => res.status(404).json({ message: 'Route not found' }));

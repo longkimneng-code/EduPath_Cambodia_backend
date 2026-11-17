@@ -1,0 +1,27 @@
+{
+  "name": "ai-service",
+  "version": "1.0.0",
+  "description": "Production-Ready Node.js/Express AI Microservice using Google Gemini SDK (Phase 1)",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "ai-microservice",
+    "express",
+    "gemini",
+    "rag-ready",
+    "failover"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.30.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
